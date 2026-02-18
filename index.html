@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>かぶミニ 利確・損切り計算機</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Kaku Gothic ProN', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        input[type="number"], select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="number"]:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .results {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            font-size: 16px;
+        }
+
+        .result-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .profit {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+
+        .loss {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+
+        .result-label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .result-value {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .profit .result-value {
+            color: #28a745;
+        }
+
+        .loss .result-value {
+            color: #dc3545;
+        }
+
+        .percentage {
+            font-size: 14px;
+            color: #666;
+            margin-left: 8px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 25px;
+            }
+
+            h1 {
+                font-size: 20px;
+            }
+
+            .result-value {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📈 かぶミニ計算機</h1>
+        <p class="subtitle">利確・損切り指値を自動計算</p>
+
+        <div class="input-group">
+            <label for="purchasePrice">購入価格（円）</label>
+            <input type="number" id="purchasePrice" placeholder="例: 1500" step="0.01" min="0">
+        </div>
+
+        <div class="input-group">
+            <label for="shares">購入株数</label>
+            <input type="number" id="shares" placeholder="例: 10" step="1" min="1">
+        </div>
+
+        <div class="input-group">
+            <label for="profitRate">利確目標（%）</label>
+            <select id="profitRate">
+                <option value="5">+5%</option>
+                <option value="6" selected>+6%</option>
+                <option value="7">+7%</option>
+            </select>
+        </div>
+
+        <div class="input-group">
+            <label for="lossRate">損切り（%）</label>
+            <select id="lossRate">
+                <option value="-3" selected>-3%</option>
+                <option value="-4">-4%</option>
+            </select>
+        </div>
+
+        <div class="results" id="results">
+            <div class="result-item" style="background: #e3f2fd; border-left: 4px solid #2196f3;">
+                <span class="result-label">合計購入金額</span>
+                <span class="result-value" style="color: #2196f3;" id="totalCost">---</span>
+            </div>
+
+            <div class="result-item profit">
+                <span class="result-label">利確指値</span>
+                <span>
+                    <span class="result-value" id="profitPrice">---</span>
+                    <span class="percentage" id="profitPercentage"></span>
+                </span>
+            </div>
+            <div class="result-item profit" style="background: #e8f5e9;">
+                <span class="result-label">利益額</span>
+                <div style="text-align: right;">
+                    <div><span class="result-value" style="font-size: 16px;" id="profitAmount1">---</span> <span style="font-size: 12px; color: #666;">(1株)</span></div>
+                    <div><span class="result-value" style="font-size: 18px;" id="profitAmountTotal">---</span> <span style="font-size: 12px; color: #666;">(合計)</span></div>
+                </div>
+            </div>
+
+            <div class="result-item loss">
+                <span class="result-label">損切り指値</span>
+                <span>
+                    <span class="result-value" id="lossPrice">---</span>
+                    <span class="percentage" id="lossPercentage"></span>
+                </span>
+            </div>
+            <div class="result-item loss" style="background: #ffebee;">
+                <span class="result-label">損失額</span>
+                <div style="text-align: right;">
+                    <div><span class="result-value" style="font-size: 16px;" id="lossAmount1">---</span> <span style="font-size: 12px; color: #666;">(1株)</span></div>
+                    <div><span class="result-value" style="font-size: 18px;" id="lossAmountTotal">---</span> <span style="font-size: 12px; color: #666;">(合計)</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const purchasePriceInput = document.getElementById('purchasePrice');
+        const sharesInput = document.getElementById('shares');
+        const profitRateSelect = document.getElementById('profitRate');
+        const lossRateSelect = document.getElementById('lossRate');
+        const totalCostEl = document.getElementById('totalCost');
+        const profitPriceEl = document.getElementById('profitPrice');
+        const lossPriceEl = document.getElementById('lossPrice');
+        const profitPercentageEl = document.getElementById('profitPercentage');
+        const lossPercentageEl = document.getElementById('lossPercentage');
+        const profitAmount1El = document.getElementById('profitAmount1');
+        const profitAmountTotalEl = document.getElementById('profitAmountTotal');
+        const lossAmount1El = document.getElementById('lossAmount1');
+        const lossAmountTotalEl = document.getElementById('lossAmountTotal');
+
+        function calculate() {
+            const purchasePrice = parseFloat(purchasePriceInput.value);
+            const shares = parseFloat(sharesInput.value);
+            const profitRate = parseFloat(profitRateSelect.value);
+            const lossRate = parseFloat(lossRateSelect.value);
+
+            if (!purchasePrice || purchasePrice <= 0) {
+                profitPriceEl.textContent = '---';
+                lossPriceEl.textContent = '---';
+                profitPercentageEl.textContent = '';
+                lossPercentageEl.textContent = '';
+                totalCostEl.textContent = '---';
+                profitAmount1El.textContent = '---';
+                profitAmountTotalEl.textContent = '---';
+                lossAmount1El.textContent = '---';
+                lossAmountTotalEl.textContent = '---';
+                return;
+            }
+
+            const profitPrice = purchasePrice * (1 + profitRate / 100);
+            const lossPrice = purchasePrice * (1 + lossRate / 100);
+
+            profitPriceEl.textContent = `¥${profitPrice.toFixed(2)}`;
+            lossPriceEl.textContent = `¥${lossPrice.toFixed(2)}`;
+            
+            profitPercentageEl.textContent = `(${profitRate >= 0 ? '+' : ''}${profitRate}%)`;
+            lossPercentageEl.textContent = `(${lossRate >= 0 ? '+' : ''}${lossRate}%)`;
+
+            // 合計購入金額
+            if (shares && shares > 0) {
+                const totalCost = purchasePrice * shares;
+                totalCostEl.textContent = `¥${totalCost.toLocaleString('ja-JP', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+                // 利益・損失額の計算
+                const profitAmount1 = profitPrice - purchasePrice;
+                const profitAmountTotal = profitAmount1 * shares;
+                const lossAmount1 = lossPrice - purchasePrice;
+                const lossAmountTotal = lossAmount1 * shares;
+
+                profitAmount1El.textContent = `+¥${profitAmount1.toFixed(2)}`;
+                profitAmountTotalEl.textContent = `+¥${profitAmountTotal.toLocaleString('ja-JP', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                lossAmount1El.textContent = `${lossAmount1.toFixed(2) >= 0 ? '+' : ''}¥${lossAmount1.toFixed(2)}`;
+                lossAmountTotalEl.textContent = `${lossAmountTotal >= 0 ? '+' : ''}¥${lossAmountTotal.toLocaleString('ja-JP', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            } else {
+                totalCostEl.textContent = '---';
+                profitAmount1El.textContent = '---';
+                profitAmountTotalEl.textContent = '---';
+                lossAmount1El.textContent = '---';
+                lossAmountTotalEl.textContent = '---';
+            }
+        }
+
+        purchasePriceInput.addEventListener('input', calculate);
+        sharesInput.addEventListener('input', calculate);
+        profitRateSelect.addEventListener('change', calculate);
+        lossRateSelect.addEventListener('change', calculate);
+
+        // 初期計算
+        calculate();
+    </script>
+</body>
+</html>
